@@ -1,6 +1,8 @@
 import cats.effect.IO
 import ch08_SchedulingMeetings.calendarEntriesApiCall
 import ch08_SchedulingMeetings.createMeetingApiCall
+import ch08_CardGame.castTheDie
+import ch08_CardGame.drawAPointCard
 
 object ExerciseOnChapter08 {
 
@@ -50,4 +52,40 @@ object ExerciseOnChapter08 {
         )
           .headOption
       )
+}
+
+object Exercise0827 {
+
+  // 1
+  def exercise01(): IO[Int] =
+    IO.delay(castTheDie())
+      .orElse(IO.pure(0))
+
+  // 2
+  def exercise02(): IO[Int] =
+    IO.delay(drawAPointCard())
+      .orElse(IO.delay(castTheDie()))
+
+  // 3
+  def exercise03(): IO[Int] =
+    IO.delay(castTheDie())
+      .orElse(IO.delay(castTheDie()))
+      .orElse(IO.pure(0))
+
+  // 4
+  def exercise04(): IO[Int] =
+    for {
+      die <- IO.delay(castTheDie()).orElse(IO.pure(0))
+      card <- IO.delay(castTheDie()).orElse(IO.pure(0))
+    } yield die + card
+
+  // 5
+  def exercise05(): IO[Int] =
+    val trial = for {
+      card <- IO.delay(drawAPointCard())
+      die1 <- IO.delay(castTheDie())
+      die2 <- IO.delay(castTheDie())
+    } yield card + die1 + die2
+
+    trial.orElse(IO.pure(0))
 }
