@@ -1,8 +1,11 @@
 import cats.effect.IO
+import cats.effect.IO.{IOCont, Uncancelable}
 import ch08_SchedulingMeetings.calendarEntriesApiCall
 import ch08_SchedulingMeetings.createMeetingApiCall
 import ch08_CardGame.castTheDie
 import ch08_CardGame.drawAPointCard
+import ch08_SchedulingMeetings.consolePrint
+import ch08_SchedulingMeetings.consoleGet
 
 object ExerciseOnChapter08 {
 
@@ -41,17 +44,34 @@ object ExerciseOnChapter08 {
     person1: String,
     person2: String,
     lengthHours: Int,
+    saveMeeting: (List[String], MeetingTime) => IO[Unit],
   ): IO[Option[MeetingTime]] =
-    scheduledMeetings(person1, person2)
-      .map(meetings =>
-        possibleMeetings(
-          meetings,
-          startHour = 8,
-          endHour = 16,
-          lengthHours = lengthHours,
-        )
-          .headOption
-      )
+    for {
+      existingMeetings <- scheduledMeetings(person1, person2)
+      possibleMeeting = possibleMeetings(
+        existingMeetings,
+        startHour = 8,
+        endHour = 16,
+        lengthHours = lengthHours,
+      ).headOption
+
+      _ <- possibleMeeting match
+        case Some(meeting) => saveMeeting(List(person1, person2), meeting)
+          .orElse(saveMeeting(List(person1, person2), meeting))
+          .orElse(IO.unit) // 出力は冪等ではない場合、このようなリカバリー戦略は安全ではない可能性がある。
+        case None => IO.unit
+    } yield possibleMeeting
+
+  def schedulingProgram(
+    getName: IO[String],
+    showMeeting: Option[MeetingTime] => IO[Unit]
+  ): IO[Unit] =
+    for {
+      name1 <- getName
+      name2 <- getName
+      possibleMeeting <- schedule(name1, name2, 2, createMeeting)
+      _ <- showMeeting(possibleMeeting)
+    } yield ()
 }
 
 object Exercise0827 {
