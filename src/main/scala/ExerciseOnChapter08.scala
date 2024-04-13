@@ -14,10 +14,7 @@ object ExerciseOnChapter08 {
     IO.delay(createMeetingApiCall(names, meetingTime))
 
   def scheduledMeetings(attendees: List[String]): IO[List[MeetingTime]] =
-    attendees
-      .map(attendee => retry(calendarEntries(attendee), 10))
-      .sequence // converts a List of IO into IO of List
-      .map(_.flatten)
+    attendees.flatTraverse(attendee => retry(calendarEntries(attendee), 10))
 
   def possibleMeetings(
     existingMeetings: List[MeetingTime],
@@ -110,4 +107,86 @@ object Exercise0827 {
     } yield card + die1 + die2
 
     trial.orElse(IO.pure(0))
+}
+
+object Exercise0838 {
+  def f01[A, B](x: IO[A], f: A => B): IO[B] = ???
+
+  def f02[A](x: IO[IO[A]]): IO[A] = ???
+
+  def f03[A, B](x: IO[A], f: A => IO[B]): IO[B] = ???
+
+  def f04[A](x: A): IO[A] = ???
+
+  def f05[A](impureAction: () => A): IO[A] = ???
+
+  def f06[A](x: IO[A], alternative: IO[A]): IO[A] = ???
+
+  def f07[A](x: List[IO[A]]): IO[List[A]] = ???
+
+  def f08[A](x: Option[IO[A]]): IO[Option[A]] = ???
+
+  def f09[A, B](x: List[A], y: List[A]): List[A] = ???
+
+  def f10[A](x: List[A], f: A => Boolean): List[A] = ???
+
+  def f11[A](x: List[A], zero: A, f: (A, A) => A): A = ???
+
+  def f12[A](x: List[List[A]]): List[A] = ???
+
+  def f13[A, B](x: List[A], f: A => List[B]): List[B] = ???
+
+  def f14[A](x: List[A], f: A => Boolean): Boolean = ???
+
+  def f15[A, B](x: Set[A], f: A => B): Set[B] = ???
+
+  def f16[A](x: Set[A], f: A => Boolean): Set[A] = ???
+
+  def f17[A](x: Set[A], zero: A, f: (A, A) => A): A = ???
+
+  def f18[A](x: Set[Set[A]]): Set[A] = ???
+
+  def f19[A, B](x: Set[A], f: A => Set[B]): Set[B] = ???
+
+  def f20[A](x: Set[A], f: A => Boolean): Boolean = ???
+
+  def f21[A, B](x: Option[A], f: A => B): Option[B] = ???
+
+  def f22[A](x: Option[A], f: A => Boolean): Option[A] = ???
+
+  def f23[A](x: Option[A], zero: A, f: (A, A) => A): A = ???
+
+  def f24[A](x: Option[Option[A]]): Option[A] = ???
+
+  def f25[A, B](x: Option[A], f: A => Option[B]): Option[B] = ???
+
+  def f26[A](x: Option[A], f: A => Boolean): Boolean = ???
+
+  def f27(x: String): Option[Int] = ???
+
+  def f28[A](x: Option[A], alternative: Option[A]): Option[A] = ???
+
+  def f29[A, B](x: Option[A], y: B): Either[B, A] = ???
+
+  def f30[A, B](x: Option[A], y: B): Either[A, B] = ???
+
+  def f31[A](x: List[Option[A]]): Option[List[A]] = ???
+
+  def f32[A, B, C](x: Either[A, B], f: B => C): Either[A, C] = ???
+
+  def f33[A, B, C](x: Either[A, B], zero: C, f: (C, B) => C): C = ???
+
+  def f34[A, B](x: Either[A, Either[A, B]]): Either[A, B] = ???
+
+  def f35[A, B, C](x: Either[A, B], f: B => Either[A, C]): Either[A, C] = ???
+
+  def f36[A, B](x: Either[A, B], f: B => Boolean): Boolean = ???
+
+  def f37[A, B](x: Either[A, B], alternative: Either[A, B]): Either[A, B] = ???
+
+  def f38[A, B](x: Either[A, B]): Option[B] = ???
+
+  def f39[A, B](x: List[Either[A, B]]): Either[A, List[B]] = ???
+
+  def f40[A, B](x: Either[A, List[B]]): List[Either[A, B]] = ???
 }
