@@ -1,11 +1,9 @@
 import cats.effect.IO
-import cats.effect.IO.{IOCont, Uncancelable}
 import ch08_SchedulingMeetings.calendarEntriesApiCall
 import ch08_SchedulingMeetings.createMeetingApiCall
 import ch08_CardGame.castTheDie
 import ch08_CardGame.drawAPointCard
-import ch08_SchedulingMeetings.consolePrint
-import ch08_SchedulingMeetings.consoleGet
+import cats.implicits._ // import が必要
 
 object ExerciseOnChapter08 {
 
@@ -15,11 +13,11 @@ object ExerciseOnChapter08 {
   def createMeeting(names: List[String], meetingTime: MeetingTime): IO[Unit] =
     IO.delay(createMeetingApiCall(names, meetingTime))
 
-  def scheduledMeetings(person1: String, person2: String): IO[List[MeetingTime]] =
-    for {
-      schedule1 <- calendarEntries(person1)
-      schedule2 <- calendarEntries(person2)
-    } yield schedule1.appendedAll(schedule2)
+  def scheduledMeetings(attendees: List[String]): IO[List[MeetingTime]] =
+    attendees
+      .map(attendee => retry(calendarEntries(attendee), 10))
+      .sequence // converts a List of IO into IO of List
+      .map(_.flatten)
 
   def possibleMeetings(
     existingMeetings: List[MeetingTime],
@@ -41,13 +39,12 @@ object ExerciseOnChapter08 {
     meeting1.endHour <= meeting2.startHour || meeting2.endHour <= meeting1.startHour
 
   def schedule(
-    person1: String,
-    person2: String,
+    attendees: List[String],
     lengthHours: Int,
     saveMeeting: (List[String], MeetingTime) => IO[Unit],
   ): IO[Option[MeetingTime]] =
     for {
-      existingMeetings <- scheduledMeetings(person1, person2)
+      existingMeetings <- scheduledMeetings(attendees)
       possibleMeeting = possibleMeetings(
         existingMeetings,
         startHour = 8,
@@ -56,9 +53,7 @@ object ExerciseOnChapter08 {
       ).headOption
 
       _ <- possibleMeeting match
-        case Some(meeting) => saveMeeting(List(person1, person2), meeting)
-          .orElse(saveMeeting(List(person1, person2), meeting))
-          .orElse(IO.unit) // 出力は冪等ではない場合、このようなリカバリー戦略は安全ではない可能性がある。
+        case Some(meeting) => saveMeeting(attendees, meeting)
         case None => IO.unit
     } yield possibleMeeting
 
@@ -69,9 +64,16 @@ object ExerciseOnChapter08 {
     for {
       name1 <- getName
       name2 <- getName
-      possibleMeeting <- schedule(name1, name2, 2, createMeeting)
+      possibleMeeting <- schedule(List(name1, name2), 2, createMeeting)
       _ <- showMeeting(possibleMeeting)
     } yield ()
+
+  def retry[A](action: IO[A], maxRetries: Int): IO[A] =
+    List.range(0, maxRetries)
+      .map(_ => action)
+      .foldLeft(action) { (program, retryAction) =>
+        program.orElse(retryAction)
+      }
 }
 
 object Exercise0827 {
