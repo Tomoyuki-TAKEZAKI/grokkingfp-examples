@@ -6,6 +6,7 @@ object ExerciseOnChapter09 {
 
   object Currency {
     def apply(name: String): Currency = name
+
     extension (currency: Currency) def name: String = currency
   }
 
@@ -14,6 +15,9 @@ object ExerciseOnChapter09 {
       rates.zip(rates.drop(1))
         .forall((previousRate, rate) => previousRate < rate)
 
+  def extractSingleCurrencyRate(currencyToExtract: Currency)
+    (table: Map[Currency, BigDecimal]): Option[BigDecimal] =
+    table.get(currencyToExtract)
 }
 
 object Exercise0906 {
@@ -21,7 +25,7 @@ object Exercise0906 {
     "key" -> "value"
   )
 
-  val m2 = m1.updated("key2","value2")
+  val m2 = m1.updated("key2", "value2")
 
   val m3 = m2.updated("key2", "another2")
 
