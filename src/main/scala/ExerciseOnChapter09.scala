@@ -43,10 +43,12 @@ object ExerciseOnChapter09 {
     amount: BigDecimal,
     from: Currency,
     to: Currency,
-  ): IO[Option[BigDecimal]] =
-    lastRates(from, to).map(rates =>
-      if (trending(rates)) Some(amount * rates.last) else None
-    )
+  ): IO[BigDecimal] =
+    for {
+      rates <- lastRates(from, to)
+      result <- if (trending(rates)) IO.pure(amount * rates.last)
+      else exchangeIfTrending(amount, from, to)
+    } yield result
 }
 
 object Exercise0906 {
