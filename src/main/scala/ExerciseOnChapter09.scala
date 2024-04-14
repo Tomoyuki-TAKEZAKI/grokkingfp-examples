@@ -39,6 +39,14 @@ object ExerciseOnChapter09 {
       lastTables = List(table1, table2, table3)
     } yield lastTables.flatMap(extractSingleCurrencyRate(to))
 
+  def currencyRate(from: Currency, to: Currency): IO[BigDecimal] =
+    for {
+      table <- retry(exchangeTable(from), 10)
+      result <- extractSingleCurrencyRate(to)(table) match
+        case Some(value) => IO.pure(value)
+        case None => currencyRate(from, to)
+    } yield result
+
   def exchangeIfTrending(
     amount: BigDecimal,
     from: Currency,
