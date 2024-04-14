@@ -31,13 +31,15 @@ object ExerciseOnChapter09 {
       )
     )
 
-  def lastRates(from: Currency, to: Currency): IO[List[BigDecimal]] =
-    for {
-      table1 <- retry(exchangeTable(from), 10)
-      table2 <- retry(exchangeTable(from), 10)
-      table3 <- retry(exchangeTable(from), 10)
-      lastTables = List(table1, table2, table3)
-    } yield lastTables.flatMap(extractSingleCurrencyRate(to))
+  def lastRates(from: Currency, to: Currency, n: Int): IO[List[BigDecimal]] =
+    if (n < 1) {
+      IO.pure(List.empty)
+    } else {
+      for {
+        currencyRate <- currencyRate(from, to)
+        remainingRates <- if (n == 1) IO.pure(List.empty) else lastRates(from, to, n - 1)
+      } yield remainingRates.prepended(currencyRate)
+    }
 
   def currencyRate(from: Currency, to: Currency): IO[BigDecimal] =
     for {
@@ -53,7 +55,7 @@ object ExerciseOnChapter09 {
     to: Currency,
   ): IO[BigDecimal] =
     for {
-      rates <- lastRates(from, to)
+      rates <- lastRates(from, to, 3)
       result <- if (trending(rates)) IO.pure(amount * rates.last)
       else exchangeIfTrending(amount, from, to)
     } yield result
