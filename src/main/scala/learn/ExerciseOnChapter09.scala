@@ -8,6 +8,12 @@ object ExerciseOnChapter09 {
     def apply(name: String): Currency = name
     extension (currency: Currency) def name: String = currency
   }
+
+  def trending(rates: List[BigDecimal]): Boolean =
+    rates.size > 1 &&
+      rates.zip(rates.drop(1))
+        .forall((previousRate, rate) => previousRate < rate)
+
 }
 
 object Exercise0906 {
