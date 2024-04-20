@@ -3,6 +3,7 @@ import ch09_CurrencyExchange.exchangeRatesTableApiCall
 import ch08_SchedulingMeetings.retry
 import fs2.Stream
 import ch08_CastingDie.castTheDieImpure
+import cats.implicits._
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.FiniteDuration
@@ -60,7 +61,7 @@ object ExerciseOnChapter09 {
       .repeat
       .map(extractSingleCurrencyRate(to))
       .unNone
-      .handleErrorWith(_ => rates(from, to)) // orElse がないっぽい
+      .orElse(rates(from, to)) // import cats.implicits._ が必要
 
   val delay: FiniteDuration = FiniteDuration(1, TimeUnit.SECONDS)
   val ticks: Stream[IO, Unit] = Stream.fixedRate[IO](delay)
