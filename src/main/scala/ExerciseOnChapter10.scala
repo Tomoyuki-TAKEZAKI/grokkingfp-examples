@@ -23,26 +23,24 @@ object ExerciseOnChapter10 {
     ).covary[IO]
 
   def processCheckIn(checkIns: Stream[IO, City]): IO[Unit] =
-    scanCheckIn(checkIns)
-      .map(convertToCityStats)
-      .map(sortCityStats)
-      .take(3)
-      .foreach(cityStats => IO.delay(println(cityStats)))
+    checkIns
+      .scan(Map.empty[City, Int])((cityCheckIns, city) =>
+        // Some なら value + 1, None なら 1
+        // patten match するよりも簡潔！
+        cityCheckIns.updatedWith(city)(_.map(_ + 1).orElse(Some(1)))
+      )
+      .map(topCities)
+//      .foreach(cityStats => IO.delay(println(cityStats)))
+      .foreach(IO.println) // 上記のコードより簡潔な表現！
       .compile
       .drain
 
-  private def scanCheckIn(checkIns: Stream[IO, City]): Stream[IO, Map[City, Int]] =
-    checkIns
-      .scan(Map.empty[City, Int])((map, city) =>
-        map.updatedWith(city) {
-          case Some(count) => Some(count + 1)
-          case None => Some(1)
-        }
-      )
-
-  private def convertToCityStats(map: Map[City, Int]): List[CityStats] =
-    map.toList.map((city, count) => CityStats(city, count))
-
-  private def sortCityStats(list: List[CityStats]): List[CityStats] =
-    list.sortBy(_.checkIns).reverse
+  // 意味的に明らかな名前を使うとわかりやすい
+  private def topCities(cityCheckIns: Map[City, Int]): List[CityStats] =
+    cityCheckIns
+      .toList
+      .map((city, checkIns) => CityStats(city, checkIns))
+      .sortBy(_.checkIns)
+      .reverse
+      .take(3)
 }
