@@ -4,6 +4,9 @@ import ch08_SchedulingMeetings.retry
 import fs2.Stream
 import ch08_CastingDie.castTheDieImpure
 
+import java.util.concurrent.TimeUnit
+import scala.concurrent.duration.FiniteDuration
+
 object ExerciseOnChapter09 {
 
   opaque type Currency = String
@@ -51,16 +54,32 @@ object ExerciseOnChapter09 {
         case None => currencyRate(from, to)
     } yield result
 
+  def rates(from: Currency, to: Currency): Stream[IO, BigDecimal] =
+    Stream
+      .eval(exchangeTable(from))
+      .repeat
+      .map(extractSingleCurrencyRate(to))
+      .unNone
+      .handleErrorWith(_ => rates(from, to)) // orElse がないっぽい
+
+  val delay: FiniteDuration = FiniteDuration(1, TimeUnit.SECONDS)
+  val ticks: Stream[IO, Unit] = Stream.fixedRate[IO](delay)
+
   def exchangeIfTrending(
     amount: BigDecimal,
     from: Currency,
     to: Currency,
   ): IO[BigDecimal] =
-    for {
-      rates <- lastRates(from, to, 3)
-      result <- if (trending(rates)) IO.pure(amount * rates.last)
-      else exchangeIfTrending(amount, from, to)
-    } yield result
+    rates(from, to)
+      .zipLeft(ticks)
+      .sliding(3)
+      .map(_.toList)
+      .filter(trending)
+      .map(_.last)
+      .head
+      .compile
+      .lastOrError
+      .map(_ * amount)
 }
 
 object Exercise0906 {
