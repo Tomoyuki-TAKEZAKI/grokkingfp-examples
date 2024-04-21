@@ -15,12 +15,21 @@ object ExerciseOnChapter10 {
   val checkIns: Stream[IO, City] =
     Stream(
       City("Sydney"),
-      City("Sydney"),
+      City("Dublin"),
       City("Cape Town"),
+      City("Lima"),
       City("Singapore"),
-      City("Cape Town"),
-      City("Sydney"),
-    ).covary[IO]
+    )
+      .repeatN(100_000)
+      .append(Stream.range(0, 100_000).map(i => City(s"City $i")))
+      .append(
+        Stream(
+          City("Sydney"),
+          City("Sydney"),
+          City("Lima")
+        )
+      )
+      .covary[IO]
 
   def processCheckIn(checkIns: Stream[IO, City]): IO[Unit] =
     checkIns
@@ -29,9 +38,11 @@ object ExerciseOnChapter10 {
         // patten match するよりも簡潔！
         cityCheckIns.updatedWith(city)(_.map(_ + 1).orElse(Some(1)))
       )
+      .chunkN(100_000)
+      .map(_.last)
+      .unNone
       .map(topCities)
-//      .foreach(cityStats => IO.delay(println(cityStats)))
-      .foreach(IO.println) // 上記のコードより簡潔な表現！
+      .foreach(IO.println)
       .compile
       .drain
 
