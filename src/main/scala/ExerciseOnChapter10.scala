@@ -2,9 +2,7 @@ import cats.effect.{IO, Ref}
 import fs2.Stream
 import cats.implicits.*
 import ch10_CastingDieConcurrently.castTheDie
-
-import java.util.concurrent.TimeUnit
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration._
 
 object ExerciseOnChapter10 {
   opaque type City = String
@@ -63,28 +61,41 @@ object ExerciseOnChapter10 {
 
 object Exercise1017 {
   val p1: IO[Int] = for {
-    _ <- IO.sleep(FiniteDuration(1, TimeUnit.SECONDS))
+    _ <- IO.sleep(1.seconds)
     result <- List.fill(2)(castTheDie()).sequence.map(_.sum)
   } yield result
 
-  val p2: IO[Ref[IO, List[Int]]] = for {
-    result <- List.fill(2)(castTheDie()).parSequence
-    ref <- Ref.of[IO, List[Int]](result)
-  } yield ref
+  // ここでは Ref は中間結果を安全に保管するために利用して、結果としては List 型を返せというのが題意であった。
+  val p2: IO[List[Int]] = for {
+    ref <- Ref.of[IO, List[Int]](List.empty)
+    singleCast = castTheDie().flatMap(result => ref.update(_.appended(result)))
+    _ <- List(singleCast, singleCast).parSequence
+    casts <- ref.get
+  } yield casts
 
-  val p3: IO[Ref[IO, List[Int]]] = for {
-    result <- List.fill(3)(castTheDie()).parSequence
-    ref <- Ref.of[IO, List[Int]](result)
-  } yield ref
+  // ここでは Ref は中間結果を安全に保管するために利用して、結果としては List 型を返せというのが題意であった。
+  val p3: IO[List[Int]] = for {
+    ref <- Ref.of[IO, List[Int]](List.empty)
+    singleCast = castTheDie().flatMap(result => ref.update(_.appended(result)))
+    _ <- List.fill(3)(singleCast).parSequence
+    casts <- ref.get
+  } yield casts
 
-  val p4: IO[Ref[IO, Int]] = for {
-    result <- List.fill(100)(castTheDie()).parSequence.map(_.count(_ == 6))
-    ref <- Ref.of[IO, Int](result)
-  } yield ref
+  // ここでは Ref は中間結果を安全に保管するために利用して、結果としては List 型を返せというのが題意であった。
+  val p4: IO[Int] = for {
+    ref <- Ref.of[IO, Int](0)
+    singleCast = castTheDie().flatMap(result =>
+      if (result == 6) {
+        ref.update(_ + 1)
+      } else {
+        IO.unit
+      }
+    )
+    result <- List.fill(100)(singleCast).parSequence
+    count <- ref.get
+  } yield count
 
-  val p5: IO[Int] = for {
-    result <- List.fill(100)(
-      IO.sleep(FiniteDuration(1, TimeUnit.SECONDS)).flatMap(_ => castTheDie())
-    ).parSequence
-  } yield result.sum
+  val p5: IO[Int] = List.fill(100)(
+    IO.sleep(1.seconds).flatMap(_ => castTheDie())
+  ).parSequence.map(_.sum)
 }
