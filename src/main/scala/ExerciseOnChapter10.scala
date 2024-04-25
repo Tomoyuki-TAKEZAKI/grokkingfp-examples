@@ -40,7 +40,8 @@ object ExerciseOnChapter10 {
       storedRanking <- Ref.of[IO, List[CityStats]](List.empty)
       rankingProgram = updateRanking(storedCheckIns, storedRanking)
       checkInsProgram = checkIns.evalMap(storeCheckIn(storedCheckIns)).compile.drain
-      _ <- List(rankingProgram, checkInsProgram).parSequence
+      outputProgram = outputRanking(storedRanking)
+      _ <- List(rankingProgram, checkInsProgram, outputProgram).parSequence
     } yield ()
 
   private def updateRanking(
@@ -50,6 +51,13 @@ object ExerciseOnChapter10 {
     newRanking <- storedCheckIns.get.map(topCities)
     _ <- storedRanking.set(newRanking)
   } yield ()).foreverM
+
+  private def outputRanking(storedRanking: Ref[IO, List[CityStats]]): IO[Nothing] =
+    (for {
+      _ <- IO.sleep(1.seconds)
+      newRanking <- storedRanking.get
+      _ <- IO.print(newRanking)
+    } yield ()).foreverM
 
   private def storeCheckIn(storedCheckIns: Ref[IO, Map[City, Int]])(city: City): IO[Unit] =
     storedCheckIns.update(
