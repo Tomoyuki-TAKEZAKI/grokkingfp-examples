@@ -35,19 +35,29 @@ object ExerciseOnChapter10 {
       .covary[IO]
 
   def processCheckIn(checkIns: Stream[IO, City]): IO[Unit] =
-    checkIns
-      .scan(Map.empty[City, Int])((cityCheckIns, city) =>
-        // Some なら value + 1, None なら 1
-        // patten match するよりも簡潔！
-        cityCheckIns.updatedWith(city)(_.map(_ + 1).orElse(Some(1)))
-      )
-      .chunkN(100_000)
-      .map(_.last)
-      .unNone
-      .map(topCities)
-      .foreach(IO.println)
-      .compile
-      .drain
+    for {
+      storedCheckIns <- Ref.of[IO, Map[City, Int]](Map.empty)
+      storedRanking <- Ref.of[IO, List[CityStats]](List.empty)
+      rankingProgram = updateRanking(storedCheckIns, storedRanking)
+      checkInsProgram = checkIns.evalMap(storeCheckIn(storedCheckIns)).compile.drain
+      _ <- List(rankingProgram, checkInsProgram).parSequence
+    } yield ()
+
+  private def updateRanking(
+    storedCheckIns: Ref[IO, Map[City, Int]],
+    storedRanking: Ref[IO, List[CityStats]],
+  ): IO[Nothing] = (for {
+    newRanking <- storedCheckIns.get.map(topCities)
+    _ <- storedRanking.set(newRanking)
+  } yield ()).foreverM
+
+  private def storeCheckIn(storedCheckIns: Ref[IO, Map[City, Int]])(city: City): IO[Unit] =
+    storedCheckIns.update(
+      _.updatedWith(city) {
+        case None => Some(1)
+        case Some(checkIns) => Some(checkIns + 1)
+      }
+    )
 
   // 意味的に明らかな名前を使うとわかりやすい
   private def topCities(cityCheckIns: Map[City, Int]): List[CityStats] =
