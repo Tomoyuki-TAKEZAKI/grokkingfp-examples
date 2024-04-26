@@ -13,7 +13,12 @@ object ExerciseOnChapter10 {
     extension (city: City) def name: String = city
   }
 
-  private case class CityStats(city: City, checkIns: Int)
+  case class CityStats(city: City, checkIns: Int)
+
+  case class ProcessingCheckIns(
+    currentRanking: IO[List[CityStats]],
+    stop: IO[Unit],
+  )
 
   val checkIns: Stream[IO, City] =
     Stream(
@@ -34,15 +39,14 @@ object ExerciseOnChapter10 {
       )
       .covary[IO]
 
-  def processCheckIn(checkIns: Stream[IO, City]): IO[Unit] =
+  def processCheckIn(checkIns: Stream[IO, City]): IO[ProcessingCheckIns] =
     for {
       storedCheckIns <- Ref.of[IO, Map[City, Int]](Map.empty)
       storedRanking <- Ref.of[IO, List[CityStats]](List.empty)
       rankingProgram = updateRanking(storedCheckIns, storedRanking)
       checkInsProgram = checkIns.evalMap(storeCheckIn(storedCheckIns)).compile.drain
-      outputProgram = outputRanking(storedRanking)
-      _ <- List(rankingProgram, checkInsProgram, outputProgram).parSequence
-    } yield ()
+      fiber <- List(rankingProgram, checkInsProgram).parSequence.start
+    } yield ProcessingCheckIns(storedRanking.get, fiber.cancel)
 
   private def updateRanking(
     storedCheckIns: Ref[IO, Map[City, Int]],
